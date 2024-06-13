@@ -2,6 +2,8 @@ const express = require("express")
 const mongoose = require("mongoose")
 const cors = require("cors")
 
+const jwt = require("jsonwebtoken")             //token imported
+
 const bcrypt = require("bcryptjs")        //imported bcryptjs
 
 const {blogModel} = require("./models/blog")
@@ -19,6 +21,36 @@ const generateHashedPassword = async (password)=>{      //password hashing
     const salt = await bcrypt.genSalt(10)
     return bcrypt.hash(password,salt)
 }
+
+
+app.post("/signin",(req,res)=>{
+    // res.send("test")
+    let input = req.body
+    blogModel.find({"email":req.body.email}).then((response)=>{
+        if (response.length > 0) {
+            let dbPassword = response[0].password
+            // console.log(dbPassword)
+            
+            bcrypt.compare(input.password,dbPassword,(error,isMatch) => {
+                if (isMatch) {
+                    jwt.sign({email:input.email},"blog-app",{expiresIn:"1d"},(error,token)=>{
+                        if (error) {
+                            res.json({"status":"token not generated"})
+                        } else {
+                            res.json({"status":"success","userid":response[0]._id,"token":token})
+                        }
+                    })
+                } else {
+                    res.json({"status":"incorrect password"})
+                }
+            })
+        } else {
+            res.json({"status":"User not found"})               //normal authentication is done here. next is token 
+        }
+        // console.log(response)
+
+    }).catch()
+})
 
 app.post("/signup",async (req,res)=>{
     // res.json({"status":"success"})
